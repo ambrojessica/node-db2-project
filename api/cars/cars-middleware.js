@@ -1,5 +1,6 @@
 const Cars = require('./cars-model');
 const vinValidator = require('vin-validator');
+const db = require('../../data/db-config');
 
 const checkCarId = (req, res, next) => {
   // DO YOUR MAGIC
@@ -17,33 +18,34 @@ const checkCarId = (req, res, next) => {
     .catch(next);
 };
 
-const checkCarPayload = (req, res, next) => {
+const checkCarPayload = async (req, res, next) => {
   // DO YOUR MAGIC
-  if (!req.body.vin) {
-    return next({
-      status: 400,
-      message: 'vin is missing'
-    });
+  try {
+    const { vin, make, model, mileage } = await req.body;
+
+    if (!vin) {
+      res.status(400).json({
+        message: 'vin is missing'
+      });
+    } else if (!make) {
+      res.status(400).json({
+        message: 'make is missing'
+      });
+    } else if (!model) {
+      res.status(400).json({
+        message: 'model is missing'
+      });
+    } else if (!mileage) {
+      res.status(400).json({
+        message: 'mileage is missing'
+      });
+    } else {
+      next();
+    }
   }
-  if (!req.body.make) {
-    return next({
-      status: 400,
-      message: 'make is missing'
-    });
+  catch (err) {
+    next(err);
   }
-  if (!req.body.model) {
-    return next({
-      status: 400,
-      message: 'model is missing'
-    });
-  }
-  if (!req.body.mileage) {
-    return next({
-      status: 400,
-      message: 'mileage is missing'
-    });
-  }
-  next();
 };
 
 const checkVinNumberValid = async (req, res, next) => {
@@ -61,17 +63,16 @@ const checkVinNumberValid = async (req, res, next) => {
 
 const checkVinNumberUnique = async (req, res, next) => {
   // DO YOUR MAGIC
-  const { vin } = await req.body;
-  const cars = await Cars.getAll();
+  const [vin] = await db('cars').where('vin', req.body.vin);
 
-  if (cars.vin !== vin) {
-    return;
+  if (vin === undefined) {
+    next();
   } else {
-    next(res.status(400).json({
-      message: `vin ${vin} already exists`
-    }));
+    next({
+      status: 400,
+      message: `vin ${req.body.vin} already exists`
+    });
   }
-  next();
 };
 
 module.exports = { checkCarId, checkCarPayload, checkVinNumberValid, checkVinNumberUnique };
